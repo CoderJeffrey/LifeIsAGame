@@ -2,15 +2,42 @@ import SwiftUI
 
 // MARK: - Dice Mode
 enum DiceMode {
-    case success // Made it - shows 1 or 2 only
-    case failure // Not doing it - shows 3, 4, 5, 6 (4 and 5 appear twice)
+    case success  // Made It - completed mission - rolls 3,4,4,5,5,6 (higher values as reward)
+    case failure  // Not Today - didn't complete - rolls 1,1,1,2,2,2 (lower values as penalty)
 
     var possibleValues: [Int] {
         switch self {
         case .success:
-            return [1, 2, 1, 2, 1, 2] // Only 1s and 2s
+            return [3, 4, 4, 5, 5, 6] // Higher rolls: 3 once, 4 twice, 5 twice, 6 once
         case .failure:
-            return [3, 4, 4, 5, 5, 6] // 3, 4, 4, 5, 5, 6 (4 and 5 twice)
+            return [1, 1, 1, 2, 2, 2] // Lower rolls: 1 and 2, each appearing 3 times
+        }
+    }
+
+    var diceColor: Color {
+        switch self {
+        case .success:
+            return PixelColors.neonGreen
+        case .failure:
+            return PixelColors.neonOrange
+        }
+    }
+
+    var glowColor: Color {
+        switch self {
+        case .success:
+            return PixelColors.neonGreen
+        case .failure:
+            return PixelColors.neonOrange
+        }
+    }
+
+    var displayRange: String {
+        switch self {
+        case .success:
+            return "3-6"
+        case .failure:
+            return "1-2"
         }
     }
 }
@@ -158,13 +185,15 @@ struct PixelDiceView: View {
         VStack(spacing: 20) {
             // Dice container
             ZStack {
-                // Glow effect when rolling
+                // Mode-specific glow effect when rolling
                 if isRolling {
+                    // Outer pulse glow
                     RoundedRectangle(cornerRadius: 15)
                         .fill(
                             RadialGradient(
                                 colors: [
-                                    PixelColors.neonYellow.opacity(0.5),
+                                    mode.glowColor.opacity(0.6),
+                                    mode.glowColor.opacity(0.2),
                                     .clear
                                 ],
                                 center: .center,
@@ -172,18 +201,63 @@ struct PixelDiceView: View {
                                 endRadius: 100
                             )
                         )
-                        .frame(width: diceSize * 1.5, height: diceSize * 1.5)
-                        .blur(radius: 10)
+                        .frame(width: diceSize * 1.8, height: diceSize * 1.8)
+                        .blur(radius: 15)
+
+                    // Inner intense glow
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.white.opacity(0.4),
+                                    mode.glowColor.opacity(0.3),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 60
+                            )
+                        )
+                        .frame(width: diceSize * 1.3, height: diceSize * 1.3)
+                        .blur(radius: 8)
                 }
 
-                // The dice
-                DiceFaceView(value: displayValue, size: diceSize)
-                    .rotation3DEffect(
-                        .degrees(rotation),
-                        axis: (x: 1, y: 1, z: 0)
-                    )
-                    .scaleEffect(scale)
-                    .offset(y: bounce)
+                // Result glow when finished
+                if finalValue != nil {
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    mode.glowColor.opacity(0.5),
+                                    .clear
+                                ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 80
+                            )
+                        )
+                        .frame(width: diceSize * 1.5, height: diceSize * 1.5)
+                        .blur(radius: 12)
+                }
+
+                // The dice with mode-colored border highlight
+                ZStack {
+                    DiceFaceView(value: displayValue, size: diceSize)
+
+                    // Mode-colored overlay border when rolling
+                    if isRolling || finalValue != nil {
+                        RoundedRectangle(cornerRadius: diceSize * 0.1)
+                            .stroke(mode.diceColor.opacity(0.7), lineWidth: 3)
+                            .frame(width: diceSize, height: diceSize)
+                            .blur(radius: 2)
+                    }
+                }
+                .rotation3DEffect(
+                    .degrees(rotation),
+                    axis: (x: 1, y: 1, z: 0)
+                )
+                .scaleEffect(scale)
+                .offset(y: bounce)
             }
             .onTapGesture {
                 if !isRolling && finalValue == nil {
@@ -205,8 +279,8 @@ struct PixelDiceView: View {
                         .pixelText(size: 14, color: PixelColors.textSecondary)
 
                     Text("\(result)")
-                        .pixelText(size: 48, color: mode == .success ? PixelColors.neonGreen : PixelColors.neonOrange)
-                        .glow(color: mode == .success ? PixelColors.neonGreen : PixelColors.neonOrange, radius: 8)
+                        .pixelText(size: 48, color: mode.diceColor)
+                        .glow(color: mode.glowColor, radius: 8)
 
                     Text(mode == .success ? "GREAT JOB! 🎉" : "KEEP TRYING! 💪")
                         .pixelText(size: 16, color: .white)
@@ -287,9 +361,9 @@ struct DiceOverlayView: View {
                 .ignoresSafeArea()
                 .onTapGesture { } // Prevent dismiss on tap
 
-            // Particle effects
+            // Mode-specific particle effects
             if isRolling {
-                ParticleEffectView()
+                ParticleEffectView(mode: mode)
             }
 
             VStack(spacing: 30) {
@@ -302,9 +376,10 @@ struct DiceOverlayView: View {
                         .glow(color: PixelColors.neonCyan, radius: 5)
 
                     Text(mode == .success ?
-                         "Success mode: 1-2 only!" :
-                         "Penalty mode: 3-6 only!")
-                        .pixelText(size: 12, color: mode == .success ? PixelColors.neonGreen : PixelColors.neonOrange)
+                         "🏆 Reward mode: \(mode.displayRange)!" :
+                         "⚠️ Penalty mode: \(mode.displayRange)")
+                        .pixelText(size: 12, color: mode.diceColor)
+                        .glow(color: mode.glowColor, radius: 3)
                 }
 
                 Spacer()
@@ -352,6 +427,7 @@ struct DiceOverlayView: View {
 
 // MARK: - Particle Effect View
 struct ParticleEffectView: View {
+    let mode: DiceMode
     @State private var particles: [Particle] = []
 
     struct Particle: Identifiable {
@@ -361,16 +437,61 @@ struct ParticleEffectView: View {
         var size: CGFloat
         var color: Color
         var opacity: Double
+        var velocityY: CGFloat
+        var velocityX: CGFloat
+        var rotation: Double
+    }
+
+    // Mode-specific color palettes
+    private var particleColors: [Color] {
+        switch mode {
+        case .success:
+            return [
+                PixelColors.neonGreen,
+                PixelColors.neonGreen.opacity(0.7),
+                PixelColors.neonCyan,
+                Color.white,
+                PixelColors.neonYellow
+            ]
+        case .failure:
+            return [
+                PixelColors.neonOrange,
+                PixelColors.neonOrange.opacity(0.7),
+                PixelColors.neonPink,
+                Color.white,
+                PixelColors.neonYellow
+            ]
+        }
     }
 
     var body: some View {
         GeometryReader { geometry in
-            ForEach(particles) { particle in
-                Circle()
-                    .fill(particle.color)
-                    .frame(width: particle.size, height: particle.size)
+            ZStack {
+                ForEach(particles) { particle in
+                    // Mix of shapes for variety
+                    Group {
+                        if particle.size > 8 {
+                            // Larger particles as diamonds
+                            Rectangle()
+                                .fill(particle.color)
+                                .frame(width: particle.size, height: particle.size)
+                                .rotationEffect(.degrees(particle.rotation))
+                        } else if particle.size > 5 {
+                            // Medium particles as circles
+                            Circle()
+                                .fill(particle.color)
+                                .frame(width: particle.size, height: particle.size)
+                        } else {
+                            // Small particles as dots with glow
+                            Circle()
+                                .fill(particle.color)
+                                .frame(width: particle.size, height: particle.size)
+                                .blur(radius: 1)
+                        }
+                    }
                     .position(x: particle.x, y: particle.y)
                     .opacity(particle.opacity)
+                }
             }
         }
         .onAppear {
@@ -379,35 +500,47 @@ struct ParticleEffectView: View {
     }
 
     private func createParticles() {
-        let colors: [Color] = [
-            PixelColors.neonPink,
-            PixelColors.neonCyan,
-            PixelColors.neonYellow,
-            PixelColors.neonGreen
-        ]
-
-        for _ in 0..<30 {
+        // Create initial burst of particles
+        for _ in 0..<40 {
             let particle = Particle(
                 x: CGFloat.random(in: 50...350),
-                y: CGFloat.random(in: 100...700),
-                size: CGFloat.random(in: 4...12),
-                color: colors.randomElement() ?? .white,
-                opacity: Double.random(in: 0.3...0.8)
+                y: CGFloat.random(in: 200...600),
+                size: CGFloat.random(in: 3...14),
+                color: particleColors.randomElement() ?? .white,
+                opacity: Double.random(in: 0.4...0.9),
+                velocityY: CGFloat.random(in: 3...10),
+                velocityX: CGFloat.random(in: -4...4),
+                rotation: Double.random(in: 0...360)
             )
             particles.append(particle)
         }
 
-        // Animate particles
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            withAnimation(.linear(duration: 0.1)) {
+        // Animate particles with more dynamic movement
+        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
+            withAnimation(.linear(duration: 0.05)) {
                 for i in 0..<particles.count {
-                    particles[i].y -= CGFloat.random(in: 2...8)
-                    particles[i].x += CGFloat.random(in: -3...3)
-                    particles[i].opacity -= 0.02
+                    // Move particles upward with slight horizontal drift
+                    particles[i].y -= particles[i].velocityY
+                    particles[i].x += particles[i].velocityX
 
+                    // Add slight oscillation
+                    particles[i].velocityX += CGFloat.random(in: -0.5...0.5)
+
+                    // Rotate diamond particles
+                    particles[i].rotation += Double.random(in: 5...15)
+
+                    // Fade out gradually
+                    particles[i].opacity -= 0.015
+
+                    // Respawn particles that fade out or go off screen
                     if particles[i].opacity <= 0 || particles[i].y < 0 {
-                        particles[i].y = CGFloat.random(in: 600...800)
-                        particles[i].opacity = Double.random(in: 0.3...0.8)
+                        particles[i].y = CGFloat.random(in: 650...800)
+                        particles[i].x = CGFloat.random(in: 50...350)
+                        particles[i].opacity = Double.random(in: 0.4...0.9)
+                        particles[i].size = CGFloat.random(in: 3...14)
+                        particles[i].color = particleColors.randomElement() ?? .white
+                        particles[i].velocityY = CGFloat.random(in: 3...10)
+                        particles[i].velocityX = CGFloat.random(in: -4...4)
                     }
                 }
             }

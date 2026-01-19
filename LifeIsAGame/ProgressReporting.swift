@@ -167,36 +167,85 @@ struct ProgressChoiceModal: View {
 
                 Spacer()
 
-                // Info text
-                VStack(spacing: 8) {
-                    Text("💡 DICE RULES")
-                        .pixelText(size: 12, color: PixelColors.neonYellow)
+                // Info text - Dice rules explanation
+                VStack(spacing: 12) {
+                    Text("🎲 DICE RULES")
+                        .pixelText(size: 14, color: PixelColors.neonYellow)
+                        .glow(color: PixelColors.neonYellow, radius: 3)
 
-                    HStack(spacing: 20) {
-                        VStack(spacing: 4) {
-                            Text("✅ Made it")
-                                .pixelText(size: 10, color: PixelColors.success)
-                            Text("Roll 1-2")
-                                .pixelText(size: 10, color: PixelColors.textSecondary)
+                    HStack(spacing: 24) {
+                        // Made it - Higher rolls (reward)
+                        VStack(spacing: 6) {
+                            HStack(spacing: 4) {
+                                Text("✅")
+                                    .font(.system(size: 16))
+                                Text("MADE IT")
+                                    .pixelText(size: 11, color: PixelColors.neonGreen)
+                            }
+
+                            // Mini dice faces showing 3,4,5,6
+                            HStack(spacing: 3) {
+                                ForEach([3, 4, 5, 6], id: \.self) { value in
+                                    MiniDiceFace(value: value, color: PixelColors.neonGreen)
+                                }
+                            }
+
+                            Text("Roll 3-6")
+                                .pixelText(size: 10, color: PixelColors.neonGreen.opacity(0.8))
+                            Text("Move further!")
+                                .pixelText(size: 8, color: PixelColors.textSecondary)
                         }
 
+                        // Divider
                         Rectangle()
-                            .fill(Color.white.opacity(0.3))
-                            .frame(width: 1, height: 30)
+                            .fill(
+                                LinearGradient(
+                                    colors: [.clear, Color.white.opacity(0.3), .clear],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                            .frame(width: 1, height: 60)
 
-                        VStack(spacing: 4) {
-                            Text("❌ Not today")
-                                .pixelText(size: 10, color: PixelColors.danger)
-                            Text("Roll 3-6")
-                                .pixelText(size: 10, color: PixelColors.textSecondary)
+                        // Not today - Lower rolls (penalty)
+                        VStack(spacing: 6) {
+                            HStack(spacing: 4) {
+                                Text("❌")
+                                    .font(.system(size: 16))
+                                Text("NOT TODAY")
+                                    .pixelText(size: 11, color: PixelColors.neonOrange)
+                            }
+
+                            // Mini dice faces showing 1,2
+                            HStack(spacing: 3) {
+                                ForEach([1, 2], id: \.self) { value in
+                                    MiniDiceFace(value: value, color: PixelColors.neonOrange)
+                                }
+                            }
+
+                            Text("Roll 1-2")
+                                .pixelText(size: 10, color: PixelColors.neonOrange.opacity(0.8))
+                            Text("Small steps")
+                                .pixelText(size: 8, color: PixelColors.textSecondary)
                         }
                     }
                 }
-                .padding(16)
+                .padding(20)
                 .background(
-                    Rectangle()
-                        .fill(Color.white.opacity(0.05))
-                        .overlay(Rectangle().stroke(Color.white.opacity(0.2), lineWidth: 1))
+                    ZStack {
+                        Rectangle()
+                            .fill(PixelColors.midnightBlue.opacity(0.8))
+
+                        Rectangle()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [PixelColors.neonGreen.opacity(0.4), PixelColors.neonOrange.opacity(0.4)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                lineWidth: 2
+                            )
+                    }
                 )
 
                 Spacer()
@@ -301,6 +350,75 @@ struct ChoiceButton: View {
             .scaleEffect(isSelected ? 1.02 : 1.0)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Mini Dice Face (for rules display)
+struct MiniDiceFace: View {
+    let value: Int
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            // Background
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.white.opacity(0.9))
+                .frame(width: 18, height: 18)
+
+            // Border
+            RoundedRectangle(cornerRadius: 2)
+                .stroke(color.opacity(0.5), lineWidth: 1)
+                .frame(width: 18, height: 18)
+
+            // Dots
+            miniDotsForValue(value)
+        }
+    }
+
+    @ViewBuilder
+    private func miniDotsForValue(_ value: Int) -> some View {
+        let dotSize: CGFloat = 3
+        let dot = Circle().fill(Color.black).frame(width: dotSize, height: dotSize)
+
+        switch value {
+        case 1:
+            dot
+        case 2:
+            VStack(spacing: 6) {
+                HStack { dot; Spacer() }
+                HStack { Spacer(); dot }
+            }
+            .frame(width: 12, height: 12)
+        case 3:
+            VStack(spacing: 3) {
+                HStack { dot; Spacer() }
+                dot
+                HStack { Spacer(); dot }
+            }
+            .frame(width: 12, height: 12)
+        case 4:
+            VStack(spacing: 6) {
+                HStack { dot; Spacer(); dot }
+                HStack { dot; Spacer(); dot }
+            }
+            .frame(width: 12, height: 12)
+        case 5:
+            VStack(spacing: 3) {
+                HStack { dot; Spacer(); dot }
+                dot
+                HStack { dot; Spacer(); dot }
+            }
+            .frame(width: 12, height: 12)
+        case 6:
+            VStack(spacing: 2) {
+                HStack { dot; Spacer(); dot }
+                HStack { dot; Spacer(); dot }
+                HStack { dot; Spacer(); dot }
+            }
+            .frame(width: 12, height: 12)
+        default:
+            EmptyView()
+        }
     }
 }
 
